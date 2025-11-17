@@ -36,6 +36,11 @@
             
             // Load balance
             loadBalance();
+            
+            // Initialize leaderboard
+            if (document.getElementById('leaderboard-list')) {
+                renderLeaderboard('money');
+            }
         });
 
         function displayLoggedInUser(user) {
@@ -84,6 +89,12 @@
             const currentBalance = loadBalance();
             const newBalance = currentBalance + amount;
             saveBalance(newBalance);
+            
+            // Update leaderboard with new balance
+            const user = JSON.parse(localStorage.getItem('osu_user'));
+            if (user) {
+                updateUserInLeaderboard(user, newBalance);
+            }
             
             // Show feedback
             alert(`✓ Successfully purchased ${amount.toLocaleString()} credits!`);
@@ -137,6 +148,11 @@
             document.querySelector('.profile-container').classList.add('active');
             closeMenu();
             loadProfile();
+        }
+
+        // Return to main menu (questions page)
+        function returnToMainMenu() {
+            showQuestions();
         }
 
         function loadProfile() {
@@ -229,7 +245,89 @@
             return data;
         }
         
-        const leaderboardData = generateLeaderboardData();
+        // Get leaderboard data from localStorage or generate sample data
+        function getLeaderboardData() {
+            let data = localStorage.getItem('leaderboard_data');
+            if (data) {
+                return JSON.parse(data);
+            } else {
+                // Generate initial sample data
+                const sampleData = generateLeaderboardData();
+                localStorage.setItem('leaderboard_data', JSON.stringify(sampleData));
+                return sampleData;
+            }
+        }
+        
+        // Save leaderboard data to localStorage
+        function saveLeaderboardData(data) {
+            localStorage.setItem('leaderboard_data', JSON.stringify(data));
+        }
+        
+        // Add user to leaderboard if not already present
+        function addUserToLeaderboard(user) {
+            const leaderboardData = getLeaderboardData();
+            const currentBalance = loadBalance();
+            
+            // Check if user already exists in money leaderboard
+            const existingUserIndex = leaderboardData.money.findIndex(u => u.user === user.username);
+            
+            if (existingUserIndex === -1) {
+                // Add user to all leaderboards
+                const categories = ['money', 'questions', 'wins', 'winrate'];
+                
+                categories.forEach(cat => {
+                    let value;
+                    switch(cat) {
+                        case 'money':
+                            value = currentBalance.toString();
+                            break;
+                        case 'questions':
+                            value = '0 questions';
+                            break;
+                        case 'wins':
+                            value = '0 wins';
+                            break;
+                        case 'winrate':
+                            value = '0%';
+                            break;
+                    }
+                    
+                    leaderboardData[cat].push({
+                        rank: leaderboardData[cat].length + 1,
+                        user: user.username,
+                        country: user.country_code,
+                        value: value
+                    });
+                });
+                
+                saveLeaderboardData(leaderboardData);
+            } else {
+                // Update user's money value in leaderboard
+                leaderboardData.money[existingUserIndex].value = currentBalance.toString();
+                saveLeaderboardData(leaderboardData);
+            }
+            
+            // Re-render leaderboard if it's currently active
+            if (document.querySelector('.leaderboard-container').classList.contains('active')) {
+                renderLeaderboard(currentCategory);
+            }
+        }
+        
+        // Update user's money value in leaderboard
+        function updateUserInLeaderboard(user, newBalance) {
+            const leaderboardData = getLeaderboardData();
+            const userIndex = leaderboardData.money.findIndex(u => u.user === user.username);
+            
+            if (userIndex !== -1) {
+                leaderboardData.money[userIndex].value = newBalance.toString();
+                saveLeaderboardData(leaderboardData);
+                
+                // Re-render leaderboard if it's currently active
+                if (document.querySelector('.leaderboard-container').classList.contains('active')) {
+                    renderLeaderboard(currentCategory);
+                }
+            }
+        }
 
         function switchCategory(category) {
             currentCategory = category;
@@ -273,11 +371,6 @@
                     <div class="leaderboard-value">${item.value}</div>
                 </div>
             `).join('');
-        }
-
-        // Initialize on page load
-        if (document.getElementById('leaderboard-list')) {
-            renderLeaderboard('money');
         }
     </script>
     <style>
@@ -343,6 +436,12 @@
             font-size: 20px;
             font-weight: 500;
             letter-spacing: 0.02em;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+
+        .logo:hover {
+            opacity: 0.8;
         }
 
         /* Side Menu */
@@ -463,6 +562,11 @@
             border-radius: 50%;
             border: 2px solid rgba(255, 255, 255, 0.3);
             transition: border-color 0.2s ease;
+            cursor: pointer;
+        }
+
+        .profile-pic:hover {
+            border-color: rgba(255, 255, 255, 0.6);
         }
 
         /* FAB - Floating Action Button */
@@ -868,7 +972,7 @@
                 <div class="menu-line"></div>
                 <div class="menu-line"></div>
             </button>
-            <div class="logo">osu-bet</div>
+            <div class="logo" onclick="returnToMainMenu()">osu-bet</div>
         </div>
         
         <button class="login-btn" onclick="loginWithOsu()">Login with osu!</button>
@@ -878,7 +982,7 @@
                 <span class="material-symbols-outlined database-icon">database</span>
                 <span class="balance-amount">0</span>
             </div>
-            <img id="profile-pic" class="profile-pic" src="" alt="Profile" onclick="showProfile()" style="cursor: pointer;">
+            <img id="profile-pic" class="profile-pic" src="" alt="Profile" onclick="showProfile()">
         </div>
     </header>
 
@@ -1004,13 +1108,5 @@
             </div>
         </div>
     </div>
-
-    <script>
-        // Initialize leaderboard on page load
-        window.addEventListener('DOMContentLoaded', () => {
-            // Clear old leaderboard data (remove this line after first run)
-            localStorage.removeItem('leaderboard_data');
-        });
-    </script>
 </body>
 </html>
