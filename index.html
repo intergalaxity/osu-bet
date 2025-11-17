@@ -36,6 +36,9 @@
             
             // Load balance
             loadBalance();
+            
+            // Initialize leaderboard
+            initializeLeaderboard();
         });
 
         function displayLoggedInUser(user) {
@@ -85,6 +88,12 @@
             const newBalance = currentBalance + amount;
             saveBalance(newBalance);
             
+            // Update leaderboard with new balance
+            const user = JSON.parse(localStorage.getItem('osu_user'));
+            if (user) {
+                updateUserInLeaderboard(user, newBalance);
+            }
+            
             // Show feedback
             alert(`✓ Successfully purchased ${amount.toLocaleString()} credits!`);
         }
@@ -112,6 +121,9 @@
             document.querySelector('.profile-container').classList.remove('active');
             document.querySelector('.leaderboard-container').classList.add('active');
             closeMenu();
+            
+            // Make sure leaderboard is rendered when we show it
+            renderLeaderboard(currentCategory);
         }
 
         function showQuestions() {
@@ -139,6 +151,11 @@
             loadProfile();
         }
 
+        // Return to main menu (questions page)
+        function returnToMainMenu() {
+            showQuestions();
+        }
+
         function loadProfile() {
             const user = JSON.parse(localStorage.getItem('osu_user'));
             if (!user) return;
@@ -148,15 +165,9 @@
             document.getElementById('profile-country').src = `https://flagcdn.com/w40/${user.country_code.toLowerCase()}.png`;
             document.getElementById('profile-country-name').textContent = user.country.name || user.country_code;
             
-            // Get rank from leaderboard - sort by money spent first
+            // Get rank from leaderboard
             const leaderboardData = getLeaderboardData();
-            const sortedMoney = [...leaderboardData.money].sort((a, b) => {
-                const aVal = parseFloat(a.value.replace(/[^0-9.]/g, '')) || 0;
-                const bVal = parseFloat(b.value.replace(/[^0-9.]/g, '')) || 0;
-                return bVal - aVal;
-            });
-            
-            const userRank = sortedMoney.findIndex(u => u.user === user.username) + 1;
+            const userRank = leaderboardData.money.findIndex(u => u.user === user.username) + 1;
             document.getElementById('profile-rank').textContent = userRank > 0 ? `#${userRank}` : 'Unranked';
             
             // Load user's created questions (currently none)
@@ -174,68 +185,105 @@
         // Leaderboard categories
         let currentCategory = 'money';
         
-        // Generate sample data for 50 players
-        const sampleUsers = [
-            { user: 'peppy', country: 'AU' },
-            { user: 'mrekk', country: 'PL' },
-            { user: 'WhiteCat', country: 'DE' },
-            { user: 'Vaxei', country: 'US' },
-            { user: 'Karthy', country: 'GB' },
-            { user: 'Cookiezi', country: 'KR' },
-            { user: 'Rafis', country: 'PL' },
-            { user: 'idke', country: 'US' },
-            { user: 'aetrna', country: 'CA' },
-            { user: 'Bubbleman', country: 'GB' },
-            { user: 'FlyingTuna', country: 'KR' },
-            { user: 'RyuK', country: 'US' },
-            { user: 'fieryrage', country: 'US' },
-            { user: 'chocomint', country: 'JP' },
-            { user: 'Alumetri', country: 'FI' },
-            { user: 'badeu', country: 'RO' },
-            { user: 'im a fancy lad', country: 'US' },
-            { user: 'Apostol', country: 'RO' },
-            { user: 'Andros', country: 'US' },
-            { user: 'Akolibed', country: 'PL' }
-        ];
-        
-        function generateLeaderboardData() {
-            const data = {};
-            const categories = ['money', 'questions', 'wins', 'winrate'];
+        // Initialize leaderboard
+        function initializeLeaderboard() {
+            // Make sure we have leaderboard data structure
+            getLeaderboardData();
             
-            categories.forEach(cat => {
-                data[cat] = [];
-                for (let i = 0; i < 50; i++) {
-                    const user = sampleUsers[i % sampleUsers.length];
+            // Render the leaderboard if we're on that page
+            if (document.querySelector('.leaderboard-container').classList.contains('active')) {
+                renderLeaderboard(currentCategory);
+            }
+        }
+        
+        // Get leaderboard data from localStorage or create empty structure
+        function getLeaderboardData() {
+            let data = localStorage.getItem('leaderboard_data');
+            if (data) {
+                return JSON.parse(data);
+            } else {
+                // Create empty leaderboard structure
+                const emptyData = {
+                    'money': [],
+                    'questions': [],
+                    'wins': [],
+                    'winrate': []
+                };
+                localStorage.setItem('leaderboard_data', JSON.stringify(emptyData));
+                return emptyData;
+            }
+        }
+        
+        // Save leaderboard data to localStorage
+        function saveLeaderboardData(data) {
+            localStorage.setItem('leaderboard_data', JSON.stringify(data));
+        }
+        
+        // Add user to leaderboard if not already present
+        function addUserToLeaderboard(user) {
+            const leaderboardData = getLeaderboardData();
+            const currentBalance = loadBalance();
+            
+            // Check if user already exists in money leaderboard
+            const existingUserIndex = leaderboardData.money.findIndex(u => u.user === user.username);
+            
+            if (existingUserIndex === -1) {
+                // Add user to all leaderboards
+                const categories = ['money', 'questions', 'wins', 'winrate'];
+                
+                categories.forEach(cat => {
                     let value;
-                    
                     switch(cat) {
                         case 'money':
-                            value = `${(1500 - i * 25).toLocaleString()}`;
+                            value = currentBalance.toString();
                             break;
                         case 'questions':
-                            value = `${50 - i} questions`;
+                            value = '0 questions';
                             break;
                         case 'wins':
-                            value = `${200 - i * 3} wins`;
+                            value = '0 wins';
                             break;
                         case 'winrate':
-                            value = `${(85 - i * 0.5).toFixed(1)}%`;
+                            value = '0%';
                             break;
                     }
                     
-                    data[cat].push({
-                        rank: i + 1,
-                        user: i < sampleUsers.length ? user.user : `${user.user}${Math.floor(i / sampleUsers.length) + 1}`,
-                        country: user.country,
+                    leaderboardData[cat].push({
+                        rank: leaderboardData[cat].length + 1,
+                        user: user.username,
+                        country: user.country_code,
                         value: value
                     });
-                }
-            });
+                });
+                
+                saveLeaderboardData(leaderboardData);
+            } else {
+                // Update user's money value in leaderboard
+                leaderboardData.money[existingUserIndex].value = currentBalance.toString();
+                saveLeaderboardData(leaderboardData);
+            }
             
-            return data;
+            // Re-render leaderboard if it's currently active
+            if (document.querySelector('.leaderboard-container').classList.contains('active')) {
+                renderLeaderboard(currentCategory);
+            }
         }
         
-        const leaderboardData = generateLeaderboardData();
+        // Update user's money value in leaderboard
+        function updateUserInLeaderboard(user, newBalance) {
+            const leaderboardData = getLeaderboardData();
+            const userIndex = leaderboardData.money.findIndex(u => u.user === user.username);
+            
+            if (userIndex !== -1) {
+                leaderboardData.money[userIndex].value = newBalance.toString();
+                saveLeaderboardData(leaderboardData);
+                
+                // Re-render leaderboard if it's currently active
+                if (document.querySelector('.leaderboard-container').classList.contains('active')) {
+                    renderLeaderboard(currentCategory);
+                }
+            }
+        }
 
         function switchCategory(category) {
             currentCategory = category;
@@ -256,12 +304,12 @@
             const data = leaderboardData[category];
             
             if (!data || data.length === 0) {
-                list.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.5); padding: 48px;">No users on the leaderboard yet.</div>';
+                list.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.5); padding: 48px;">No users on the leaderboard yet. Be the first to sign up!</div>';
                 return;
             }
             
             // Sort and assign ranks
-            const sortedData = data.sort((a, b) => {
+            const sortedData = [...data].sort((a, b) => {
                 const aVal = parseFloat(a.value.replace(/[^0-9.]/g, '')) || 0;
                 const bVal = parseFloat(b.value.replace(/[^0-9.]/g, '')) || 0;
                 return bVal - aVal;
@@ -279,11 +327,6 @@
                     <div class="leaderboard-value">${item.value}</div>
                 </div>
             `).join('');
-        }
-
-        // Initialize on page load
-        if (document.getElementById('leaderboard-list')) {
-            renderLeaderboard('money');
         }
     </script>
     <style>
@@ -350,6 +393,11 @@
             font-weight: 500;
             letter-spacing: 0.02em;
             cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+
+        .logo:hover {
+            opacity: 0.8;
         }
 
         /* Side Menu */
@@ -470,6 +518,11 @@
             border-radius: 50%;
             border: 2px solid rgba(255, 255, 255, 0.3);
             transition: border-color 0.2s ease;
+            cursor: pointer;
+        }
+
+        .profile-pic:hover {
+            border-color: rgba(255, 255, 255, 0.6);
         }
 
         /* FAB - Floating Action Button */
@@ -831,10 +884,11 @@
         }
 
         .profile-rank {
-            color: #CE93D8;
-            font-weight: 700;
-            font-size: 56px;
-            margin-left: auto;
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 8px 20px;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 20px;
         }
 
         .profile-section {
@@ -874,7 +928,7 @@
                 <div class="menu-line"></div>
                 <div class="menu-line"></div>
             </button>
-            <div class="logo" onclick="showQuestions()">osu-bet</div>
+            <div class="logo" onclick="returnToMainMenu()">osu-bet</div>
         </div>
         
         <button class="login-btn" onclick="loginWithOsu()">Login with osu!</button>
@@ -884,7 +938,7 @@
                 <span class="material-symbols-outlined database-icon">database</span>
                 <span class="balance-amount">0</span>
             </div>
-            <img id="profile-pic" class="profile-pic" src="" alt="Profile" onclick="showProfile()" style="cursor: pointer;">
+            <img id="profile-pic" class="profile-pic" src="" alt="Profile" onclick="showProfile()">
         </div>
     </header>
 
@@ -997,9 +1051,9 @@
                             <img id="profile-country" src="" alt="Country">
                             <span id="profile-country-name">Country</span>
                         </div>
+                        <div class="profile-rank" id="profile-rank">#1</div>
                     </div>
                 </div>
-                <div class="profile-rank" id="profile-rank">#1</div>
             </div>
 
             <div class="profile-section">
@@ -1010,13 +1064,5 @@
             </div>
         </div>
     </div>
-
-    <script>
-        // Initialize leaderboard on page load
-        window.addEventListener('DOMContentLoaded', () => {
-            // Clear old leaderboard data (remove this line after first run)
-            localStorage.removeItem('leaderboard_data');
-        });
-    </script>
 </body>
 </html>
