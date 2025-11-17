@@ -109,6 +109,7 @@
             document.querySelector('.questions-container').classList.add('hidden');
             document.querySelector('.leaderboard-container').classList.remove('active');
             document.querySelector('.credits-container').classList.remove('active');
+            document.querySelector('.profile-container').classList.remove('active');
             document.querySelector('.leaderboard-container').classList.add('active');
             closeMenu();
         }
@@ -116,6 +117,7 @@
         function showQuestions() {
             document.querySelector('.leaderboard-container').classList.remove('active');
             document.querySelector('.credits-container').classList.remove('active');
+            document.querySelector('.profile-container').classList.remove('active');
             document.querySelector('.questions-container').classList.remove('hidden');
             closeMenu();
         }
@@ -123,8 +125,44 @@
         function showCredits() {
             document.querySelector('.questions-container').classList.add('hidden');
             document.querySelector('.leaderboard-container').classList.remove('active');
+            document.querySelector('.profile-container').classList.remove('active');
             document.querySelector('.credits-container').classList.add('active');
             closeMenu();
+        }
+
+        function showProfile() {
+            document.querySelector('.questions-container').classList.add('hidden');
+            document.querySelector('.leaderboard-container').classList.remove('active');
+            document.querySelector('.credits-container').classList.remove('active');
+            document.querySelector('.profile-container').classList.add('active');
+            closeMenu();
+            loadProfile();
+        }
+
+        function loadProfile() {
+            const user = JSON.parse(localStorage.getItem('osu_user'));
+            if (!user) return;
+
+            document.getElementById('profile-avatar').src = user.avatar_url;
+            document.getElementById('profile-username').textContent = user.username;
+            document.getElementById('profile-country').src = `https://flagcdn.com/w40/${user.country_code.toLowerCase()}.png`;
+            document.getElementById('profile-country-name').textContent = user.country.name || user.country_code;
+            
+            // Get rank from leaderboard
+            const leaderboardData = getLeaderboardData();
+            const userRank = leaderboardData.money.findIndex(u => u.user === user.username) + 1;
+            document.getElementById('profile-rank').textContent = userRank > 0 ? `#${userRank}` : 'Unranked';
+            
+            // Load user's created questions (currently none)
+            const userQuestions = []; // Will be populated later
+            const questionsContainer = document.getElementById('profile-questions-list');
+            
+            if (userQuestions.length === 0) {
+                questionsContainer.innerHTML = '<div class="profile-questions-empty">This user has created no questions yet.</div>';
+            } else {
+                // Will show questions here later
+                questionsContainer.innerHTML = '';
+            }
         }
 
         // Leaderboard categories
@@ -732,6 +770,85 @@
         .questions-container.hidden {
             display: none;
         }
+
+        /* Profile page */
+        .profile-container {
+            display: none;
+        }
+
+        .profile-container.active {
+            display: block;
+        }
+
+        .profile-header {
+            background: linear-gradient(135deg, #6A1B9A, #8E24AA);
+            padding: 32px 24px;
+            border-radius: 4px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .profile-info {
+            flex: 1;
+        }
+
+        .profile-username {
+            color: #FFFFFF;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .profile-meta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+        }
+
+        .profile-meta img {
+            width: 20px;
+            height: 14px;
+            border-radius: 2px;
+        }
+
+        .profile-rank {
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        .profile-section {
+            margin-top: 24px;
+        }
+
+        .profile-section-title {
+            color: #FFFFFF;
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 16px;
+        }
+
+        .profile-questions-empty {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 14px;
+            padding: 48px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -760,7 +877,7 @@
                 <span class="material-symbols-outlined database-icon">database</span>
                 <span class="balance-amount">0</span>
             </div>
-            <img id="profile-pic" class="profile-pic" src="" alt="Profile">
+            <img id="profile-pic" class="profile-pic" src="" alt="Profile" onclick="showProfile()" style="cursor: pointer;">
         </div>
     </header>
 
@@ -853,6 +970,35 @@
                     </div>
                     <div class="package-label">Whale Pack</div>
                     <button class="purchase-btn" onclick="purchaseCredits(5000)">Purchase</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Page -->
+        <div class="profile-container">
+            <div class="page-header">
+                <h1 class="page-title">Profile</h1>
+                <p class="page-subtitle">Your osu-bet profile</p>
+            </div>
+
+            <div class="profile-header">
+                <img id="profile-avatar" class="profile-avatar" src="" alt="Profile">
+                <div class="profile-info">
+                    <div class="profile-username" id="profile-username">Username</div>
+                    <div class="profile-meta">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <img id="profile-country" src="" alt="Country">
+                            <span id="profile-country-name">Country</span>
+                        </div>
+                        <div class="profile-rank" id="profile-rank">#1</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="profile-section">
+                <div class="profile-section-title">Created Questions</div>
+                <div id="profile-questions-list">
+                    <div class="profile-questions-empty">This user has created no questions yet.</div>
                 </div>
             </div>
         </div>
