@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logging in...</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #212121;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: white;
+        }
+
+        .loading {
+            text-align: center;
+        }
+
+        .spinner {
+            border: 4px solid rgba(106, 27, 154, 0.3);
+            border-top: 4px solid #6A1B9A;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            color: #f44336;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading">
+        <div class="spinner"></div>
+        <p id="status">Logging in with osu!...</p>
+        <p id="error" class="error"></p>
+    </div>
+
+    <script>
+        const CONFIG = {
+            API_URL: 'https://api.osu-bet.xyz'
+        };
+
+        async function handleCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const error = urlParams.get('error');
+
+            if (error) {
+                document.getElementById('status').textContent = 'Login failed';
+                document.getElementById('error').textContent = `Error: ${error}`;
+                return;
+            }
+
+            if (!code) {
+                document.getElementById('status').textContent = 'Login failed';
+                document.getElementById('error').textContent = 'No authorization code received';
+                return;
+            }
+
+            try {
+                // Exchange code for access token
+                const tokenResponse = await fetch(`${CONFIG.API_URL}/api/auth?code=${code}`);
+                
+                if (!tokenResponse.ok) {
+                    throw new Error('Failed to get access token');
+                }
+
+                const tokenData = await tokenResponse.json();
+                const accessToken = tokenData.access_token;
+
+                // Get user info
+                const userResponse = await fetch(`${CONFIG.API_URL}/api/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+
+                if (!userResponse.ok) {
+                    throw new Error('Failed to get user info');
+                }
+
+                const userData = await userResponse.json();
+
+                // Store in localStorage
+                localStorage.setItem('osu_access_token', accessToken);
+                localStorage.setItem('osu_user', JSON.stringify(userData));
+
+                // Redirect to home
+                document.getElementById('status').textContent = 'Success! Redirecting...';
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1000);
+
+            } catch (err) {
+                document.getElementById('status').textContent = 'Login failed';
+                document.getElementById('error').textContent = err.message;
+            }
+        }
+
+        handleCallback();
+    </script>
+</body>
+</html>
