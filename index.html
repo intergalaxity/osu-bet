@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Material Design 1 Header</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+        // Configuration
+        const CONFIG = {
+            CLIENT_ID: '45816',
+            REDIRECT_URI: 'https://osu-bet.xyz/callback.html',
+            API_URL: 'https://api.osu-bet.xyz'
+        };
+
+        // Login function
+        function loginWithOsu() {
+            const authUrl = `https://osu.ppy.sh/oauth/authorize?` +
+                `client_id=${CONFIG.CLIENT_ID}&` +
+                `redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&` +
+                `response_type=code&` +
+                `scope=identify`;
+            
+            window.location.href = authUrl;
+        }
+
+        // Check if user is logged in
+        window.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('osu_access_token');
+            const user = localStorage.getItem('osu_user');
+            
+            if (token && user) {
+                displayLoggedInUser(JSON.parse(user));
+            }
+        });
+
+        function displayLoggedInUser(user) {
+            const loginBtn = document.querySelector('.login-btn');
+            loginBtn.textContent = `Welcome, ${user.username}!`;
+            loginBtn.onclick = logout;
+        }
+
+        function logout() {
+            localStorage.removeItem('osu_access_token');
+            localStorage.removeItem('osu_user');
+            location.reload();
+        }
+
+        // Menu toggle
+        function toggleMenu() {
+            const menu = document.querySelector('.side-menu');
+            const overlay = document.querySelector('.menu-overlay');
+            menu.classList.toggle('open');
+            overlay.classList.toggle('show');
+        }
+
+        function closeMenu() {
+            const menu = document.querySelector('.side-menu');
+            const overlay = document.querySelector('.menu-overlay');
+            menu.classList.remove('open');
+            overlay.classList.remove('show');
+        }
+
+        // Page navigation
+        function showLeaderboard() {
+            document.querySelector('.questions-container').classList.add('hidden');
+            document.querySelector('.leaderboard-container').classList.add('active');
+            closeMenu();
+        }
+
+        function showQuestions() {
+            document.querySelector('.leaderboard-container').classList.remove('active');
+            document.querySelector('.questions-container').classList.remove('hidden');
+            closeMenu();
+        }
+
+        // Leaderboard categories
+        let currentCategory = 'money';
+        
+        // Generate sample data for 50 players
+        const sampleUsers = [
+            { user: 'peppy', country: 'AU' },
+            { user: 'mrekk', country: 'PL' },
+            { user: 'WhiteCat', country: 'DE' },
+            { user: 'Vaxei', country: 'US' },
+            { user: 'Karthy', country: 'GB' },
+            { user: 'Cookiezi', country: 'KR' },
+            { user: 'Rafis', country: 'PL' },
+            { user: 'idke', country: 'US' },
+            { user: 'aetrna', country: 'CA' },
+            { user: 'Bubbleman', country: 'GB' },
+            { user: 'FlyingTuna', country: 'KR' },
+            { user: 'RyuK', country: 'US' },
+            { user: 'fieryrage', country: 'US' },
+            { user: 'chocomint', country: 'JP' },
+            { user: 'Alumetri', country: 'FI' },
+            { user: 'badeu', country: 'RO' },
+            { user: 'im a fancy lad', country: 'US' },
+            { user: 'Apostol', country: 'RO' },
+            { user: 'Andros', country: 'US' },
+            { user: 'Akolibed', country: 'PL' }
+        ];
+        
+        function generateLeaderboardData() {
+            const data = {};
+            const categories = ['money', 'questions', 'wins', 'winrate'];
+            
+            categories.forEach(cat => {
+                data[cat] = [];
+                for (let i = 0; i < 50; i++) {
+                    const user = sampleUsers[i % sampleUsers.length];
+                    let value;
+                    
+                    switch(cat) {
+                        case 'money':
+                            value = `${(1500 - i * 25).toLocaleString()}`;
+                            break;
+                        case 'questions':
+                            value = `${50 - i} questions`;
+                            break;
+                        case 'wins':
+                            value = `${200 - i * 3} wins`;
+                            break;
+                        case 'winrate':
+                            value = `${(85 - i * 0.5).toFixed(1)}%`;
+                            break;
+                    }
+                    
+                    data[cat].push({
+                        rank: i + 1,
+                        user: i < sampleUsers.length ? user.user : `${user.user}${Math.floor(i / sampleUsers.length) + 1}`,
+                        country: user.country,
+                        value: value
+                    });
+                }
+            });
+            
+            return data;
+        }
+        
+        const leaderboardData = generateLeaderboardData();
+
+        function switchCategory(category) {
+            currentCategory = category;
+            
+            // Update active tab
+            document.querySelectorAll('.category-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update leaderboard
+            renderLeaderboard(category);
+        }
+
+        function renderLeaderboard(category) {
+            const list = document.getElementById('leaderboard-list');
+            const data = leaderboardData[category];
+            
+            list.innerHTML = data.map(item => `
+                <div class="leaderboard-item">
+                    <div class="leaderboard-rank">#${item.rank}</div>
+                    <div class="leaderboard-user">
+                        <img src="https://flagcdn.com/w40/${item.country.toLowerCase()}.png" 
+                             alt="${item.country}" 
+                             class="flag">
+                        <span>${item.user}</span>
+                    </div>
+                    <div class="leaderboard-value">${item.value}</div>
+                </div>
+            `).join('');
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #212121;
+        }
+
+        .header {
+            background-color: #6A1B9A;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.14), 
+                        0 3px 4px rgba(0,0,0,0.12), 
+                        0 1px 5px rgba(0,0,0,0.2);
+            position: relative;
+            z-index: 100;
+        }
+
+        .left-section {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .menu-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 4px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            transition: background-color 0.2s ease;
+        }
+
+        .menu-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .menu-line {
+            width: 18px;
+            height: 2px;
+            background-color: #FFFFFF;
+            transition: all 0.3s ease;
+        }
+
+        .logo {
+            color: #FFFFFF;
+            font-size: 20px;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+        }
+
+        /* Side Menu */
+        .side-menu {
+            position: fixed;
+            left: -280px;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background-color: #1a1a1a;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.3);
+            transition: left 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            z-index: 99;
+            padding-top: 64px;
+        }
+
+        .side-menu.open {
+            left: 0;
+        }
+
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            z-index: 98;
+        }
+
+        .menu-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .menu-item {
+            color: #FFFFFF;
+            padding: 16px 24px;
+            display: block;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s ease;
+            border-left: 4px solid transparent;
+        }
+
+        .menu-item:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+            border-left-color: #6A1B9A;
+        }
+
+        .login-btn {
+            color: #FFFFFF;
+            background: transparent;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            text-transform: uppercase;
+            padding: 8px 16px;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            border-radius: 2px;
+            transition: background-color 0.3s ease;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .login-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .login-btn:active {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Demo content below header */
+        .content {
+            padding: 24px;
+        }
+
+        .page-header {
+            margin-bottom: 24px;
+        }
+
+        .page-title {
+            color: #FFFFFF;
+            font-size: 24px;
+            font-weight: 500;
+            margin: 0 0 8px 0;
+        }
+
+        .page-subtitle {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            margin: 0;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 16px;
+            margin-top: 80px;
+        }
+
+        /* Leaderboard styles */
+        .leaderboard-container {
+            display: none;
+        }
+
+        .leaderboard-container.active {
+            display: block;
+        }
+
+        .category-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            overflow-x: auto;
+        }
+
+        .category-tab {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.7);
+            border: none;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-radius: 2px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .category-tab:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .category-tab.active {
+            background-color: #6A1B9A;
+            color: #FFFFFF;
+        }
+
+        .leaderboard-list {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 2px;
+            overflow: hidden;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .leaderboard-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .leaderboard-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .leaderboard-list::-webkit-scrollbar-thumb {
+            background: rgba(106, 27, 154, 0.5);
+            border-radius: 4px;
+        }
+
+        .leaderboard-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(106, 27, 154, 0.7);
+        }
+
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: background-color 0.2s ease;
+        }
+
+        .leaderboard-item:last-child {
+            border-bottom: none;
+        }
+
+        .leaderboard-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .leaderboard-rank {
+            color: #6A1B9A;
+            font-size: 20px;
+            font-weight: 700;
+            width: 40px;
+            text-align: center;
+        }
+
+        .leaderboard-user {
+            flex: 1;
+            color: #FFFFFF;
+            font-size: 16px;
+            font-weight: 500;
+            margin-left: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .flag {
+            width: 24px;
+            height: 16px;
+            border-radius: 2px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .leaderboard-value {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .questions-container {
+            display: block;
+        }
+
+        .questions-container.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="menu-overlay" onclick="closeMenu()"></div>
+    
+    <nav class="side-menu">
+        <a href="#" class="menu-item" onclick="showLeaderboard(); return false;">Leaderboard</a>
+        <a href="#" class="menu-item">My Bets</a>
+        <a href="#" class="menu-item">Settings</a>
+    </nav>
+
+    <header class="header">
+        <div class="left-section">
+            <button class="menu-btn" onclick="toggleMenu()">
+                <div class="menu-line"></div>
+                <div class="menu-line"></div>
+                <div class="menu-line"></div>
+            </button>
+            <div class="logo">osu-bet</div>
+        </div>
+        <button class="login-btn" onclick="loginWithOsu()">Login with osu!</button>
+    </header>
+
+    <div class="content">
+        <!-- Questions Page -->
+        <div class="questions-container">
+            <div class="page-header">
+                <h1 class="page-title">Questions</h1>
+                <p class="page-subtitle">Bet on osu! question things</p>
+            </div>
+            <div class="empty-state">
+                No questions to bet on yet. Check back later.
+            </div>
+        </div>
+
+        <!-- Leaderboard Page -->
+        <div class="leaderboard-container">
+            <div class="page-header">
+                <h1 class="page-title">Leaderboard</h1>
+                <p class="page-subtitle">Top players across different categories</p>
+            </div>
+            
+            <div class="category-tabs">
+                <button class="category-tab active" onclick="switchCategory('money')">Money Spent</button>
+                <button class="category-tab" onclick="switchCategory('questions')">Questions Created</button>
+                <button class="category-tab" onclick="switchCategory('wins')">Total Wins</button>
+                <button class="category-tab" onclick="switchCategory('winrate')">Win Rate</button>
+            </div>
+            
+            <div class="leaderboard-list" id="leaderboard-list">
+                <!-- Will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize leaderboard on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            renderLeaderboard('money');
+        });
+    </script>
+</body>
+</html>
