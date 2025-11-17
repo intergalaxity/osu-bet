@@ -6,37 +6,55 @@
     <title>osu-bet</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=database" />
-    <script>
-        // Configuration
-        const CONFIG = {
-            CLIENT_ID: '45816',
-            REDIRECT_URI: 'https://osu-bet.xyz/callback.html',
-            API_URL: 'https://osu-bet-api.vercel.app/api'
+    
+    <!-- Firebase -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+        import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, query, where } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCOeEazSYaBxZp57CljsPcf-KwnGjtYM_Q",
+            authDomain: "osu-bet.firebaseapp.com",
+            projectId: "osu-bet",
+            storageBucket: "osu-bet.firebasestorage.app",
+            messagingSenderId: "1053322395934",
+            appId: "1:1053322395934:web:c3126240506c66e0e4c90f",
+            measurementId: "G-5WB4BFXKWF"
         };
 
-        // API Functions
-        async function addUserToLeaderboard(user) {
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Replace your API functions with Firebase versions
+        window.addUserToLeaderboard = async function(user) {
             try {
-                const response = await fetch(`${CONFIG.API_URL}/users/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                // Check if user exists
+                const q = query(collection(db, 'users'), where('username', '==', user.username));
+                const snapshot = await getDocs(q);
+                
+                if (snapshot.empty) {
+                    // Add new user
+                    await addDoc(collection(db, 'users'), {
                         username: user.username,
                         country_code: user.country_code,
                         avatar_url: user.avatar_url,
-                        balance: loadBalance()
-                    })
-                });
-                return await response.json();
+                        balance: loadBalance(),
+                        questions: 0,
+                        wins: 0,
+                        winrate: 0,
+                        createdAt: new Date()
+                    });
+                    console.log('User added to Firebase');
+                }
             } catch (error) {
                 console.error('Error adding user:', error);
             }
-        }
+        };
 
-        async function getLeaderboardData() {
+        window.getLeaderboardData = async function() {
             try {
-                const response = await fetch(`${CONFIG.API_URL}/leaderboard`);
-                const users = await response.json();
+                const snapshot = await getDocs(collection(db, 'users'));
+                const users = snapshot.docs.map(doc => doc.data());
                 
                 return {
                     'money': users.map(user => ({
@@ -68,22 +86,32 @@
                 console.error('Error fetching leaderboard:', error);
                 return { 'money': [], 'questions': [], 'wins': [], 'winrate': [] };
             }
-        }
+        };
 
-        async function updateUserInLeaderboard(user, newBalance) {
+        window.updateUserInLeaderboard = async function(user, newBalance) {
             try {
-                await fetch(`${CONFIG.API_URL}/users/update-balance`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        username: user.username,
+                const q = query(collection(db, 'users'), where('username', '==', user.username));
+                const snapshot = await getDocs(q);
+                
+                if (!snapshot.empty) {
+                    const userDoc = snapshot.docs[0];
+                    await updateDoc(doc(db, 'users', userDoc.id), {
                         balance: newBalance
-                    })
-                });
+                    });
+                    console.log('User balance updated in Firebase');
+                }
             } catch (error) {
-                console.error('Error updating balance:', error);
+                console.error('Error updating user:', error);
             }
-        }
+        };
+    </script>
+
+    <script>
+        // Configuration
+        const CONFIG = {
+            CLIENT_ID: '45816',
+            REDIRECT_URI: 'https://osu-bet.xyz/callback.html'
+        };
 
         // Login function
         function loginWithOsu() {
@@ -237,8 +265,7 @@
             document.getElementById('profile-country-name').textContent = user.country.name || user.country_code;
             
             // Get rank from leaderboard
-            const leaderboardData = getLeaderboardData();
-            leaderboardData.then(data => {
+            getLeaderboardData().then(data => {
                 const sortedMoney = [...data.money].sort((a, b) => {
                     const aVal = parseFloat(a.value.replace(/[^0-9.]/g, '')) || 0;
                     const bVal = parseFloat(b.value.replace(/[^0-9.]/g, '')) || 0;
@@ -316,6 +343,7 @@
             });
         }
     </script>
+
     <style>
         * {
             margin: 0;
