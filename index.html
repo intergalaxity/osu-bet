@@ -167,7 +167,12 @@
             
             // Get rank from leaderboard
             const leaderboardData = getLeaderboardData();
-            const userRank = leaderboardData.money.findIndex(u => u.user === user.username) + 1;
+            const sortedMoney = [...leaderboardData.money].sort((a, b) => {
+                const aVal = parseFloat(a.value.replace(/[^0-9.]/g, '')) || 0;
+                const bVal = parseFloat(b.value.replace(/[^0-9.]/g, '')) || 0;
+                return bVal - aVal;
+            });
+            const userRank = sortedMoney.findIndex(u => u.user === user.username) + 1;
             document.getElementById('profile-rank').textContent = userRank > 0 ? `#${userRank}` : 'Unranked';
             
             // Load user's created questions (currently none)
@@ -847,8 +852,9 @@
             margin-bottom: 24px;
             display: flex;
             align-items: center;
-            gap: 32px;
+            justify-content: space-between;
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            position: relative;
         }
 
         .profile-avatar {
@@ -860,6 +866,7 @@
 
         .profile-info {
             flex: 1;
+            margin-left: 32px;
         }
 
         .profile-username {
@@ -885,10 +892,14 @@
 
         .profile-rank {
             background-color: rgba(255, 255, 255, 0.2);
-            padding: 8px 20px;
-            border-radius: 16px;
-            font-weight: 600;
-            font-size: 20px;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 32px;
+            color: #FFFFFF;
+            text-align: center;
+            min-width: 120px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
 
         .profile-section {
@@ -1043,17 +1054,19 @@
             </div>
 
             <div class="profile-header">
-                <img id="profile-avatar" class="profile-avatar" src="" alt="Profile">
-                <div class="profile-info">
-                    <div class="profile-username" id="profile-username">Username</div>
-                    <div class="profile-meta">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <img id="profile-country" src="" alt="Country">
-                            <span id="profile-country-name">Country</span>
+                <div style="display: flex; align-items: center;">
+                    <img id="profile-avatar" class="profile-avatar" src="" alt="Profile">
+                    <div class="profile-info">
+                        <div class="profile-username" id="profile-username">Username</div>
+                        <div class="profile-meta">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <img id="profile-country" src="" alt="Country">
+                                <span id="profile-country-name">Country</span>
+                            </div>
                         </div>
-                        <div class="profile-rank" id="profile-rank">#1</div>
                     </div>
                 </div>
+                <div class="profile-rank" id="profile-rank">#1</div>
             </div>
 
             <div class="profile-section">
