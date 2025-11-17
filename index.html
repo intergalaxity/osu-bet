@@ -11,8 +11,79 @@
         const CONFIG = {
             CLIENT_ID: '45816',
             REDIRECT_URI: 'https://osu-bet.xyz/callback.html',
-            API_URL: 'https://api.osu-bet.xyz'
+            API_URL: 'https://osu-bet-api.vercel.app/api'
         };
+
+        // API Functions
+        async function addUserToLeaderboard(user) {
+            try {
+                const response = await fetch(`${CONFIG.API_URL}/users/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: user.username,
+                        country_code: user.country_code,
+                        avatar_url: user.avatar_url,
+                        balance: loadBalance()
+                    })
+                });
+                return await response.json();
+            } catch (error) {
+                console.error('Error adding user:', error);
+            }
+        }
+
+        async function getLeaderboardData() {
+            try {
+                const response = await fetch(`${CONFIG.API_URL}/leaderboard`);
+                const users = await response.json();
+                
+                return {
+                    'money': users.map(user => ({
+                        rank: 0,
+                        user: user.username,
+                        country: user.country_code,
+                        value: user.balance.toString()
+                    })),
+                    'questions': users.map(user => ({
+                        rank: 0,
+                        user: user.username,
+                        country: user.country_code,
+                        value: user.questions + ' questions'
+                    })),
+                    'wins': users.map(user => ({
+                        rank: 0,
+                        user: user.username,
+                        country: user.country_code,
+                        value: user.wins + ' wins'
+                    })),
+                    'winrate': users.map(user => ({
+                        rank: 0,
+                        user: user.username,
+                        country: user.country_code,
+                        value: user.winrate + '%'
+                    }))
+                };
+            } catch (error) {
+                console.error('Error fetching leaderboard:', error);
+                return { 'money': [], 'questions': [], 'wins': [], 'winrate': [] };
+            }
+        }
+
+        async function updateUserInLeaderboard(user, newBalance) {
+            try {
+                await fetch(`${CONFIG.API_URL}/users/update-balance`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: user.username,
+                        balance: newBalance
+                    })
+                });
+            } catch (error) {
+                console.error('Error updating balance:', error);
+            }
+        }
 
         // Login function
         function loginWithOsu() {
@@ -167,22 +238,23 @@
             
             // Get rank from leaderboard
             const leaderboardData = getLeaderboardData();
-            const sortedMoney = [...leaderboardData.money].sort((a, b) => {
-                const aVal = parseFloat(a.value.replace(/[^0-9.]/g, '')) || 0;
-                const bVal = parseFloat(b.value.replace(/[^0-9.]/g, '')) || 0;
-                return bVal - aVal;
+            leaderboardData.then(data => {
+                const sortedMoney = [...data.money].sort((a, b) => {
+                    const aVal = parseFloat(a.value.replace(/[^0-9.]/g, '')) || 0;
+                    const bVal = parseFloat(b.value.replace(/[^0-9.]/g, '')) || 0;
+                    return bVal - aVal;
+                });
+                const userRank = sortedMoney.findIndex(u => u.user === user.username) + 1;
+                document.getElementById('profile-rank').textContent = userRank > 0 ? `#${userRank}` : 'Unranked';
             });
-            const userRank = sortedMoney.findIndex(u => u.user === user.username) + 1;
-            document.getElementById('profile-rank').textContent = userRank > 0 ? `#${userRank}` : 'Unranked';
             
             // Load user's created questions (currently none)
-            const userQuestions = []; // Will be populated later
+            const userQuestions = [];
             const questionsContainer = document.getElementById('profile-questions-list');
             
             if (userQuestions.length === 0) {
                 questionsContainer.innerHTML = '<div class="profile-questions-empty">This user has created no questions yet.</div>';
             } else {
-                // Will show questions here later
                 questionsContainer.innerHTML = '';
             }
         }
@@ -192,101 +264,9 @@
         
         // Initialize leaderboard
         function initializeLeaderboard() {
-            // Make sure we have leaderboard data structure
-            getLeaderboardData();
-            
             // Render the leaderboard if we're on that page
             if (document.querySelector('.leaderboard-container').classList.contains('active')) {
                 renderLeaderboard(currentCategory);
-            }
-        }
-        
-        // Get leaderboard data from localStorage or create empty structure
-        function getLeaderboardData() {
-            let data = localStorage.getItem('leaderboard_data');
-            if (data) {
-                return JSON.parse(data);
-            } else {
-                // Create empty leaderboard structure
-                const emptyData = {
-                    'money': [],
-                    'questions': [],
-                    'wins': [],
-                    'winrate': []
-                };
-                localStorage.setItem('leaderboard_data', JSON.stringify(emptyData));
-                return emptyData;
-            }
-        }
-        
-        // Save leaderboard data to localStorage
-        function saveLeaderboardData(data) {
-            localStorage.setItem('leaderboard_data', JSON.stringify(data));
-        }
-        
-        // Add user to leaderboard if not already present
-        function addUserToLeaderboard(user) {
-            const leaderboardData = getLeaderboardData();
-            const currentBalance = loadBalance();
-            
-            // Check if user already exists in money leaderboard
-            const existingUserIndex = leaderboardData.money.findIndex(u => u.user === user.username);
-            
-            if (existingUserIndex === -1) {
-                // Add user to all leaderboards
-                const categories = ['money', 'questions', 'wins', 'winrate'];
-                
-                categories.forEach(cat => {
-                    let value;
-                    switch(cat) {
-                        case 'money':
-                            value = currentBalance.toString();
-                            break;
-                        case 'questions':
-                            value = '0 questions';
-                            break;
-                        case 'wins':
-                            value = '0 wins';
-                            break;
-                        case 'winrate':
-                            value = '0%';
-                            break;
-                    }
-                    
-                    leaderboardData[cat].push({
-                        rank: leaderboardData[cat].length + 1,
-                        user: user.username,
-                        country: user.country_code,
-                        value: value
-                    });
-                });
-                
-                saveLeaderboardData(leaderboardData);
-            } else {
-                // Update user's money value in leaderboard
-                leaderboardData.money[existingUserIndex].value = currentBalance.toString();
-                saveLeaderboardData(leaderboardData);
-            }
-            
-            // Re-render leaderboard if it's currently active
-            if (document.querySelector('.leaderboard-container').classList.contains('active')) {
-                renderLeaderboard(currentCategory);
-            }
-        }
-        
-        // Update user's money value in leaderboard
-        function updateUserInLeaderboard(user, newBalance) {
-            const leaderboardData = getLeaderboardData();
-            const userIndex = leaderboardData.money.findIndex(u => u.user === user.username);
-            
-            if (userIndex !== -1) {
-                leaderboardData.money[userIndex].value = newBalance.toString();
-                saveLeaderboardData(leaderboardData);
-                
-                // Re-render leaderboard if it's currently active
-                if (document.querySelector('.leaderboard-container').classList.contains('active')) {
-                    renderLeaderboard(currentCategory);
-                }
             }
         }
 
@@ -305,33 +285,35 @@
 
         function renderLeaderboard(category) {
             const list = document.getElementById('leaderboard-list');
-            const leaderboardData = getLeaderboardData();
-            const data = leaderboardData[category];
             
-            if (!data || data.length === 0) {
-                list.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.5); padding: 48px;">No users on the leaderboard yet. Be the first to sign up!</div>';
-                return;
-            }
-            
-            // Sort and assign ranks
-            const sortedData = [...data].sort((a, b) => {
-                const aVal = parseFloat(a.value.replace(/[^0-9.]/g, '')) || 0;
-                const bVal = parseFloat(b.value.replace(/[^0-9.]/g, '')) || 0;
-                return bVal - aVal;
-            });
-            
-            list.innerHTML = sortedData.map((item, index) => `
-                <div class="leaderboard-item">
-                    <div class="leaderboard-rank">#${index + 1}</div>
-                    <div class="leaderboard-user">
-                        <img src="https://flagcdn.com/w40/${item.country.toLowerCase()}.png" 
-                             alt="${item.country}" 
-                             class="flag">
-                        <span>${item.user}</span>
+            getLeaderboardData().then(leaderboardData => {
+                const data = leaderboardData[category];
+                
+                if (!data || data.length === 0) {
+                    list.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.5); padding: 48px;">No users on the leaderboard yet. Be the first to sign up!</div>';
+                    return;
+                }
+                
+                // Sort and assign ranks
+                const sortedData = [...data].sort((a, b) => {
+                    const aVal = parseFloat(a.value.replace(/[^0-9.]/g, '')) || 0;
+                    const bVal = parseFloat(b.value.replace(/[^0-9.]/g, '')) || 0;
+                    return bVal - aVal;
+                });
+                
+                list.innerHTML = sortedData.map((item, index) => `
+                    <div class="leaderboard-item">
+                        <div class="leaderboard-rank">#${index + 1}</div>
+                        <div class="leaderboard-user">
+                            <img src="https://flagcdn.com/w40/${item.country.toLowerCase()}.png" 
+                                 alt="${item.country}" 
+                                 class="flag">
+                            <span>${item.user}</span>
+                        </div>
+                        <div class="leaderboard-value">${item.value}</div>
                     </div>
-                    <div class="leaderboard-value">${item.value}</div>
-                </div>
-            `).join('');
+                `).join('');
+            });
         }
     </script>
     <style>
