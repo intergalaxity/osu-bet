@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Material Design 1 Header</title>
+    <title>osu-bet</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=database" />
     <script>
         // Configuration
         const CONFIG = {
@@ -235,6 +236,11 @@
                 </div>
             `).join('');
         }
+
+        // Initialize on page load
+        if (document.getElementById('leaderboard-list')) {
+            renderLeaderboard('money');
+        }
     </script>
     <style>
         * {
@@ -402,17 +408,9 @@
             background-color: rgba(255, 255, 255, 0.15);
         }
 
-        .coin-icon {
-            width: 20px;
-            height: 20px;
-            background: linear-gradient(135deg, #FFD700, #FFA500);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 12px;
-            color: #000;
+        .database-icon {
+            font-size: 20px;
+            color: #FFFFFF;
         }
 
         .balance-amount {
@@ -426,12 +424,7 @@
             height: 40px;
             border-radius: 50%;
             border: 2px solid rgba(255, 255, 255, 0.3);
-            cursor: pointer;
             transition: border-color 0.2s ease;
-        }
-
-        .profile-pic:hover {
-            border-color: #FFFFFF;
         }
 
         /* FAB - Floating Action Button */
@@ -764,10 +757,10 @@
         
         <div class="user-section">
             <div class="balance-display" onclick="showCredits()">
-                <div class="coin-icon">$</div>
+                <span class="material-symbols-outlined database-icon">database</span>
                 <span class="balance-amount">0</span>
             </div>
-            <img id="profile-pic" class="profile-pic" src="" alt="Profile" onclick="logout()">
+            <img id="profile-pic" class="profile-pic" src="" alt="Profile">
         </div>
     </header>
 
